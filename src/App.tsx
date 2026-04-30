@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle2, ExternalLink, Loader2, RefreshCw, Send } from "lucide-react";
+import { AlertCircle, CheckCircle2, ExternalLink, Loader2, MessageCircle, RefreshCw, Search, Send } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { cn } from "./lib/utils";
 
@@ -26,7 +26,36 @@ type StatusResponse = {
   error?: string;
 };
 
+type CommentItem = {
+  index: number;
+  cid: string;
+  text: string;
+  nickname: string;
+  digg_count: number;
+  reply_count: number;
+  ip_label: string;
+  create_time: string;
+};
+
+type HashtagCommentsData = {
+  keyword: string;
+  hashtag: {
+    name?: string;
+    id?: string;
+    view_count?: number;
+  };
+  video: {
+    aweme_id?: string;
+    video_url?: string;
+    title?: string;
+    picked_text?: string;
+    comment_count?: number;
+    comments?: CommentItem[];
+  } | null;
+};
+
 const DEFAULT_URL = "https://example.com";
+const DEFAULT_KEYWORD = "AI教程";
 
 function outputText(value: unknown) {
   if (value === undefined || value === null) return "";
@@ -35,10 +64,18 @@ function outputText(value: unknown) {
 
 export default function App() {
   const [url, setUrl] = useState(DEFAULT_URL);
+  const [keyword, setKeyword] = useState(DEFAULT_KEYWORD);
   const [status, setStatus] = useState<StatusResponse | null>(null);
   const [result, setResult] = useState<OpenCliResponse | null>(null);
+  const [hashtagResult, setHashtagResult] = useState<OpenCliResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [hashtagLoading, setHashtagLoading] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
+
+  const hashtagData = useMemo(() => {
+    const data = hashtagResult?.data as HashtagCommentsData | undefined;
+    return data?.hashtag && "video" in data ? data : null;
+  }, [hashtagResult]);
 
   const normalizedOutput = useMemo(() => {
     if (!result) return "";
@@ -72,6 +109,21 @@ export default function App() {
     }
   }
 
+  async function searchHashtag(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setHashtagLoading(true);
+    setHashtagResult(null);
+    setResult(null);
+    try {
+      const response = await window.publisher.hashtagComments(keyword);
+      setHashtagResult(response);
+      setResult(response);
+      await refreshStatus();
+    } finally {
+      setHashtagLoading(false);
+    }
+  }
+
   useEffect(() => {
     void refreshStatus();
   }, []);
@@ -102,6 +154,79 @@ export default function App() {
               </button>
             </div>
           </form>
+
+          <section className="panel">
+            <form className="stack gap-3" onSubmit={searchHashtag}>
+              <label className="field-label" htmlFor="hashtag-keyword">
+                Hashtag
+              </label>
+              <div className="url-row">
+                <input
+                  id="hashtag-keyword"
+                  className="input"
+                  value={keyword}
+                  onChange={(event) => setKeyword(event.target.value)}
+                  spellCheck={false}
+                />
+                <button className="icon-button primary" type="submit" disabled={hashtagLoading} aria-label="Search hashtag">
+                  {hashtagLoading ? <Loader2 className="icon spin" /> : <Search className="icon" />}
+                </button>
+              </div>
+            </form>
+
+            <div className="comment-result">
+              <div className="panel-header compact">
+                <div className="panel-title">Comments</div>
+                {hashtagResult?.ok ? (
+                  <div className="badge ok">exit {hashtagResult.exitCode}</div>
+                ) : hashtagResult ? (
+                  <div className="badge bad">exit {hashtagResult.exitCode ?? "n/a"}</div>
+                ) : null}
+              </div>
+
+              {hashtagLoading ? (
+                <div className="empty-state">
+                  <Loader2 className="icon spin" />
+                  <span>Loading</span>
+                </div>
+              ) : hashtagData?.video ? (
+                <div className="stack gap-3">
+                  <div className="topic-summary">
+                    <div>
+                      <span className="summary-label">Topic</span>
+                      <strong>#{hashtagData.hashtag.name || hashtagData.keyword}</strong>
+                    </div>
+                    <div>
+                      <span className="summary-label">Video</span>
+                      <strong>{hashtagData.video.comment_count ?? 0} comments</strong>
+                    </div>
+                  </div>
+                  <div className="video-title" title={hashtagData.video.video_url}>
+                    {hashtagData.video.title || hashtagData.video.picked_text || hashtagData.video.aweme_id}
+                  </div>
+                  <div className="comments-list">
+                    {(hashtagData.video.comments || []).map((comment) => (
+                      <article className="comment-card" key={comment.cid || comment.index}>
+                        <div className="comment-meta">
+                          <span>{comment.nickname || "Unknown"}</span>
+                          <span>{comment.ip_label || "-"}</span>
+                          <span>{comment.digg_count} likes</span>
+                        </div>
+                        <p>{comment.text}</p>
+                      </article>
+                    ))}
+                  </div>
+                </div>
+              ) : hashtagResult ? (
+                <pre className="output compact-output">{hashtagResult.stderr || hashtagResult.stdout || "No output"}</pre>
+              ) : (
+                <div className="empty-state">
+                  <MessageCircle className="icon" />
+                  <span>No comments</span>
+                </div>
+              )}
+            </div>
+          </section>
 
           <section className="panel">
             <div className="panel-header">

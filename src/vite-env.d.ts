@@ -27,6 +27,7 @@ type StatusResponse = {
 interface Window {
   publisher: {
     openUrl(url: string): Promise<OpenCliResponse>;
+    hashtagComments(keyword: string): Promise<OpenCliResponse>;
     status(): Promise<StatusResponse>;
   };
 }
