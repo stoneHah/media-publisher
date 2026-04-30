@@ -1,0 +1,279 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --control-width: 420px;
+  --radius: 8px;
+  --background: 220 18% 96%;
+  --foreground: 225 15% 12%;
+  --muted: 220 14% 91%;
+  --muted-foreground: 222 10% 42%;
+  --primary: 198 83% 32%;
+  --primary-foreground: 0 0% 100%;
+  --accent: 152 32% 88%;
+  --accent-foreground: 158 48% 18%;
+  --destructive: 0 72% 44%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 220 13% 83%;
+  --input: 220 13% 80%;
+  --ring: 198 83% 32%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: 0;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: var(--control-width) minmax(0, 1fr);
+  height: 100%;
+  min-width: 980px;
+  overflow: hidden;
+}
+
+.control-pane {
+  height: 100%;
+  border-right: 1px solid hsl(var(--border));
+  background: #fbfcfd;
+  padding: 22px;
+  overflow: auto;
+}
+
+.browser-pane {
+  min-width: 0;
+  background: #eef1f4;
+}
+
+.browser-placeholder {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: #6b7280;
+}
+
+.placeholder-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+}
+
+.gap-2 {
+  gap: 8px;
+}
+
+.gap-3 {
+  gap: 12px;
+}
+
+.gap-6 {
+  gap: 24px;
+}
+
+.grow {
+  flex: 1;
+}
+
+.eyebrow {
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.field-label {
+  color: hsl(var(--muted-foreground));
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.url-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 40px;
+  gap: 8px;
+}
+
+.input {
+  width: 100%;
+  height: 40px;
+  border: 1px solid hsl(var(--input));
+  border-radius: var(--radius);
+  background: #fff;
+  color: hsl(var(--foreground));
+  padding: 0 12px;
+  outline: none;
+}
+
+.input:focus {
+  border-color: hsl(var(--ring));
+  box-shadow: 0 0 0 3px hsl(var(--ring) / 0.14);
+}
+
+.icon-button {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.icon-button.primary {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.icon-button.ghost {
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  border-color: hsl(var(--border));
+}
+
+.icon {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.spin {
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.panel {
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  background: #fff;
+  padding: 14px;
+  min-height: 0;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 40px;
+}
+
+.panel-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.facts {
+  display: grid;
+  gap: 10px;
+  margin: 10px 0 12px;
+}
+
+.facts div {
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.facts dt {
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.facts dd {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: hsl(var(--foreground));
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: var(--radius);
+  padding: 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.status-line.ok,
+.badge.ok {
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+.status-line.bad,
+.badge.bad {
+  background: hsl(var(--destructive) / 0.1);
+  color: hsl(var(--destructive));
+}
+
+.badge {
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.output {
+  height: 330px;
+  max-height: 42vh;
+  margin: 12px 0 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  background: #f7f9fb;
+  color: #1f2937;
+  padding: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.5;
+}
