@@ -186,6 +186,110 @@ cli({
   );
 
   await fs.writeFile(
+    path.join(douyinAdapterDir, "hashtag.js"),
+    `import { cli, Strategy } from '@jackwener/opencli/registry';
+import { ArgumentError } from '@jackwener/opencli/errors';
+
+function normalizeLimit(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 10;
+  return Math.max(1, Math.min(20, Math.round(numeric)));
+}
+
+function parseCount(text) {
+  const raw = String(text || '').replace(/,/g, '').trim();
+  const match = raw.match(/([\\d.]+)\\s*(亿|万|w|W)?/);
+  if (!match) return 0;
+  const value = Number(match[1]);
+  if (!Number.isFinite(value)) return 0;
+  const unit = match[2];
+  if (unit === '亿') return Math.round(value * 100000000);
+  if (unit === '万' || unit === 'w' || unit === 'W') return Math.round(value * 10000);
+  return Math.round(value);
+}
+
+async function searchHashtags(page, keyword, limit) {
+  const normalizedKeyword = String(keyword || '').trim().replace(/^#/, '');
+  if (!normalizedKeyword) {
+    throw new ArgumentError('keyword is required for hashtag search');
+  }
+
+  await page.goto('https://www.douyin.com/search/' + encodeURIComponent(normalizedKeyword) + '?type=video', {
+    waitUntil: 'load',
+    settleMs: 3000
+  });
+  await page.wait(3);
+
+  const items = await page.evaluate('(' + ((keyword, limit) => {
+    const normalized = String(keyword || '').trim().replace(/^#/, '');
+    const candidates = [];
+    const seen = new Set();
+
+    const add = (name, id = '', viewText = '') => {
+      const cleanName = String(name || '').trim().replace(/^#/, '');
+      if (!cleanName || seen.has(cleanName)) return;
+      seen.add(cleanName);
+      candidates.push({ name: cleanName, id, viewText: String(viewText || '') });
+    };
+
+    for (const anchor of Array.from(document.querySelectorAll('a[href]'))) {
+      const href = anchor.href || '';
+      const text = (anchor.textContent || '').replace(/\\s+/g, ' ').trim();
+      const hashtagMatch = href.match(/\\/(?:hashtag|search)\\/([^/?#]+)/);
+      if (href.includes('/hashtag/') && hashtagMatch?.[1]) {
+        add(decodeURIComponent(hashtagMatch[1]), hashtagMatch[1], text);
+      }
+      for (const match of text.matchAll(/#([^#\\s]{1,40})/g)) {
+        add(match[1], '', text);
+      }
+    }
+
+    for (const node of Array.from(document.querySelectorAll('[class*="tag"], [class*="challenge"], [class*="topic"]'))) {
+      const text = (node.textContent || '').replace(/\\s+/g, ' ').trim();
+      for (const match of text.matchAll(/#?([^#\\s]{1,40})/g)) {
+        if (match[1] && text.includes(normalized)) add(match[1], '', text);
+      }
+    }
+
+    if (!candidates.length) add(normalized);
+    return candidates.slice(0, limit);
+  }).toString() + ')(' + JSON.stringify(normalizedKeyword) + ', ' + JSON.stringify(limit) + ')');
+
+  return (Array.isArray(items) ? items : []).map((item) => ({
+    name: item.name || normalizedKeyword,
+    id: item.id || '',
+    view_count: parseCount(item.viewText)
+  }));
+}
+
+cli({
+  site: 'douyin',
+  name: 'hashtag',
+  description: '通过内嵌 Electron 浏览器进行话题搜索，不依赖 Browser Bridge',
+  domain: 'www.douyin.com',
+  strategy: Strategy.UI,
+  navigateBefore: false,
+  args: [
+    { name: 'action', required: true, positional: true, choices: ['search', 'suggest', 'hot'], help: 'search=关键词搜索 suggest/hot=返回空列表' },
+    { name: 'keyword', default: '', help: '搜索关键词' },
+    { name: 'cover', default: '', help: '保留参数；内嵌浏览器模式暂不使用' },
+    { name: 'limit', type: 'int', default: 10 }
+  ],
+  columns: ['name', 'id', 'view_count'],
+  func: async (page, kwargs) => {
+    const action = String(kwargs.action || '').trim();
+    const limit = normalizeLimit(kwargs.limit);
+    if (action === 'search') {
+      return searchHashtags(page, kwargs.keyword, limit);
+    }
+    return [];
+  }
+});
+`,
+    "utf8"
+  );
+
+  await fs.writeFile(
     path.join(douyinAdapterDir, "comments.js"),
     `import { cli, Strategy } from '@jackwener/opencli/registry';
 import { ArgumentError, CommandExecutionError } from '@jackwener/opencli/errors';
@@ -628,6 +732,7 @@ function assertElectronNodeCanRunOpenCli() {
 async function runOpenCli(args: string[], cdpEndpoint: string): Promise<OpenUrlResult> {
   assertElectronNodeCanRunOpenCli();
   await ensureOpenCliRuntime();
+  const opencliHome = getOpenCliHome();
   const opencliEntry = pathToFileURL(getOpenCliEntry()).href;
   const bootstrap = [
     "process.argv = ['electron', ...process.argv.slice(1)];",
@@ -636,7 +741,9 @@ async function runOpenCli(args: string[], cdpEndpoint: string): Promise<OpenUrlR
 
   const childEnv = {
     ...process.env,
-    HOME: getOpenCliHome(),
+    HOME: opencliHome,
+    USERPROFILE: opencliHome,
+    OPENCLI_CACHE_DIR: path.join(opencliHome, ".opencli", "cache"),
     OPENCLI_CDP_ENDPOINT: cdpEndpoint,
     ELECTRON_RUN_AS_NODE: "1",
     FORCE_COLOR: "0",
